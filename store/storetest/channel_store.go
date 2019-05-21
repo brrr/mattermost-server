@@ -23,9 +23,9 @@ type SqlSupplier interface {
 }
 
 func cleanupChannels(t *testing.T, ss store.Store) {
-	result := <-ss.Channel().GetAllChannels(0, 100000, true)
+	result := <-ss.Channel().GetAllChannels(0, 100000, model.ChannelSearchOpts{IncludeDeleted: true})
 	if result.Err != nil {
-		t.Fatal("error cleaning all channels")
+		t.Fatalf("error cleaning all channels: %v", result.Err)
 	}
 	list := result.Data.(*model.ChannelListWithTeamData)
 	for _, channel := range *list {
@@ -1103,7 +1103,7 @@ func testChannelStoreGetAllChannels(t *testing.T, ss store.Store, s SqlSupplier)
 	c5.Type = model.CHANNEL_GROUP
 	store.Must(ss.Channel().Save(&c5, -1))
 
-	cresult := <-ss.Channel().GetAllChannels(0, 10, false)
+	cresult := <-ss.Channel().GetAllChannels(0, 10, model.ChannelSearchOpts{})
 	list := cresult.Data.(*model.ChannelListWithTeamData)
 	assert.Len(t, *list, 2)
 	assert.Equal(t, (*list)[0].Id, c1.Id)
@@ -1111,7 +1111,7 @@ func testChannelStoreGetAllChannels(t *testing.T, ss store.Store, s SqlSupplier)
 	assert.Equal(t, (*list)[1].Id, c3.Id)
 	assert.Equal(t, (*list)[1].TeamDisplayName, "Name2")
 
-	cresult = <-ss.Channel().GetAllChannels(0, 10, true)
+	cresult = <-ss.Channel().GetAllChannels(0, 10, model.ChannelSearchOpts{IncludeDeleted: true})
 	list = cresult.Data.(*model.ChannelListWithTeamData)
 	assert.Len(t, *list, 3)
 	assert.Equal(t, (*list)[0].Id, c1.Id)
@@ -1119,7 +1119,7 @@ func testChannelStoreGetAllChannels(t *testing.T, ss store.Store, s SqlSupplier)
 	assert.Equal(t, (*list)[1].Id, c2.Id)
 	assert.Equal(t, (*list)[2].Id, c3.Id)
 
-	cresult = <-ss.Channel().GetAllChannels(0, 1, true)
+	cresult = <-ss.Channel().GetAllChannels(0, 1, model.ChannelSearchOpts{IncludeDeleted: true})
 	list = cresult.Data.(*model.ChannelListWithTeamData)
 	assert.Len(t, *list, 1)
 	assert.Equal(t, (*list)[0].Id, c1.Id)
@@ -2399,10 +2399,10 @@ func testChannelStoreSearchAllChannels(t *testing.T, ss store.Store) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Description, func(t *testing.T) {
-			result := <-ss.Channel().SearchAllChannels(testCase.Term, testCase.IncludeDeleted)
+			result := <-ss.Channel().SearchAllChannels(testCase.Term, model.ChannelSearchOpts{IncludeDeleted: testCase.IncludeDeleted})
 			require.Nil(t, result.Err)
 			channels := result.Data.(*model.ChannelListWithTeamData)
-			require.Equal(t, len(*channels), len(*testCase.ExpectedResults))
+			require.Equal(t, len(*testCase.ExpectedResults), len(*channels))
 			for i, expected := range *testCase.ExpectedResults {
 				require.Equal(t, (*channels)[i].Id, expected.Id)
 			}
